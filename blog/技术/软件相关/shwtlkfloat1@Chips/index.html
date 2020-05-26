@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+
+    
+
+    
+    <title>浅谈计算机二进制浮点数 | Oreo</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    
+    <meta name="keywords" content="float" />
+    
+    <meta name="description" content="如果方向错了，再快也白搭。  首先我们明确一点，目前所用的计算机都是基于许多统一规范而来的。这些规范可能不够完美，但一定是目前为止最为适用且优秀的。我很喜欢一本书中列出的硬件设计三大基本原则：  简单源于规整 越小越快 优秀的设计需要适宜的折中方案  为什么要说这个？因为计算机的浮点数也是基于硬件设计的。很多时候你可能会感知不到它，只认为是普通的一个非整数而已。其实，因为硬件限制，计算机浮点数只">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈计算机二进制浮点数">
+<meta property="og:url" content="https://oreo.moe/blog/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/shwtlkfloat1@Chips/index.html">
+<meta property="og:site_name" content="Oreo">
+<meta property="og:description" content="如果方向错了，再快也白搭。  首先我们明确一点，目前所用的计算机都是基于许多统一规范而来的。这些规范可能不够完美，但一定是目前为止最为适用且优秀的。我很喜欢一本书中列出的硬件设计三大基本原则：  简单源于规整 越小越快 优秀的设计需要适宜的折中方案  为什么要说这个？因为计算机的浮点数也是基于硬件设计的。很多时候你可能会感知不到它，只认为是普通的一个非整数而已。其实，因为硬件限制，计算机浮点数只">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://oreo.moe/blog/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/shwtlkfloat1@Chips/General_floating_point_frac.svg">
+<meta property="article:published_time" content="2020-05-10T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-05-10T16:00:00.000Z">
+<meta property="article:author" content="常州大学开源软件协会">
+<meta property="article:tag" content="float">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://oreo.moe/blog/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/shwtlkfloat1@Chips/General_floating_point_frac.svg">
+    
+
+    
+
+    
+
+    
+<link rel="stylesheet" href="/blog/libs/font-awesome/css/font-awesome.min.css">
+
+    
+<link rel="stylesheet" href="/blog/libs/titillium-web/styles.css">
+
+    
+<link rel="stylesheet" href="/blog/libs/source-code-pro/styles.css">
+
+
+    
+<link rel="stylesheet" href="/blog/css/style.css">
+
+
+    
+<script src="/blog/libs/jquery/3.5.0/jquery.min.js"></script>
+
+    
+    
+        
+<link rel="stylesheet" href="/blog/libs/lightgallery/css/lightgallery.min.css">
+
+    
+    
+        
+<link rel="stylesheet" href="/blog/libs/justified-gallery/justifiedGallery.min.css">
+
+    
+    
+    
+    
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+    <div id="wrap">
+        <header id="header">
+    <div id="header-outer" class="outer">
+        <div class="container">
+            <div class="container-inner">
+                <div id="header-title">
+                    <h1 class="logo-wrap">
+                        <a href="/blog/" class="logo"></a>
+                    </h1>
+                    
+                        <h2 class="subtitle-wrap">
+                            <p class="subtitle">Oh Oreo Blog</p>
+                        </h2>
+                    
+                </div>
+                <div id="header-inner" class="nav-container">
+                    <a id="main-nav-toggle" class="nav-icon fa fa-bars"></a>
+                    <div class="nav-container-inner">
+                        <ul id="main-nav">
+                            
+                                <li class="main-nav-list-item" >
+                                    <a class="main-nav-list-link" href="/blog/">主页</a>
+                                </li>
+                            
+                                <li class="main-nav-list-item" >
+                                    <a class="main-nav-list-link" href="/blog/about">关于</a>
+                                </li>
+                            
+                                        <ul class="main-nav-list"><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E6%8A%80%E6%9C%AF/">技术</a><ul class="main-nav-list-child"><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/">软件相关</a></li></ul></li><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E8%BD%AF%E4%BB%B6/">软件</a><ul class="main-nav-list-child"><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E8%BD%AF%E4%BB%B6/%E5%88%9B%E6%84%8F%E5%88%86%E4%BA%AB/">创意分享</a></li><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E8%BD%AF%E4%BB%B6/%E8%B5%84%E6%BA%90%E5%88%86%E4%BA%AB/">资源分享</a></li><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E8%BD%AF%E4%BB%B6/%E8%BF%90%E8%A1%8C%E9%94%99%E8%AF%AF/">运行错误</a></li><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E8%BD%AF%E4%BB%B6/%E9%85%8D%E7%BD%AE%E7%9B%B8%E5%85%B3/">配置相关</a></li></ul></li><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E9%80%9A%E7%94%A8/">通用</a><ul class="main-nav-list-child"><li class="main-nav-list-item"><a class="main-nav-list-link" href="/blog/categories/%E9%80%9A%E7%94%A8/%E6%A0%A1%E5%9B%AD/">校园</a></li></ul></li></ul>
+                                    
+                        </ul>
+                        <nav id="sub-nav">
+                            <div id="search-form-wrap">
+
+    <form class="search-form">
+        <input type="text" class="ins-search-input search-form-input" placeholder="搜索" />
+        <button type="submit" class="search-form-submit"></button>
+    </form>
+    <div class="ins-search">
+    <div class="ins-search-mask"></div>
+    <div class="ins-search-container">
+        <div class="ins-input-wrapper">
+            <input type="text" class="ins-search-input" placeholder="想要查找什么..." />
+            <span class="ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/blog/',
+        CONTENT_URL: '/blog/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/blog/js/insight.js"></script>
+
+
+</div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+        <div class="container">
+            <div class="main-body container-inner">
+                <div class="main-body-inner">
+                    <section id="main">
+                        <div class="main-body-header">
+    <h1 class="header">
+    
+    <a class="page-title-link" href="/blog/categories/%E6%8A%80%E6%9C%AF/">技术</a><i class="icon fa fa-angle-right"></i><a class="page-title-link" href="/blog/categories/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/">软件相关</a>
+    </h1>
+</div>
+
+                        <div class="main-body-content">
+                            <article id="post-技术-软件相关__浅谈计算机二进制浮点数__Chips__2020-05-11" class="article article-single article-type-post" itemscope itemprop="blogPost">
+    <div class="article-inner">
+        
+            <header class="article-header">
+                
+    
+        <h1 class="article-title" itemprop="name">
+        浅谈计算机二进制浮点数
+        </h1>
+    
+
+            </header>
+        
+        
+            <div class="article-meta">
+                
+    <div class="article-date">
+      <i class="fa fa-calendar"></i>
+      <a href="/blog/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/shwtlkfloat1@Chips/" class="article-date">
+         <time datetime="2020-05-10T16:00:00.000Z" itemprop="datePublished">2020-05-11</time>
+      </a>
+    </div>
+
+
+                
+
+                
+    <div class="article-tag">
+        <i class="fa fa-tag"></i>
+        <a class="tag-link" href="/blog/tags/float/" rel="tag">float</a>
+    </div>
+
+                
+
+                
+   <div class="article-counter">
+      <i class="fa fa-file-word-o"></i>
+      <span class="post-count-item-text">本文字数: </span>
+      <span class="post-count">3.5k</span>
+      <i class="fa fa-clock-o"></i>
+      <span class="post-time-item-text">阅读时长: </span>
+      <span class="post-count">13 分钟 </span>
+   </div>
+
+
+            </div>
+        
+        
+        <div class="article-entry" itemprop="articleBody">
+            
+
+            
+
+            
+
+            <blockquote>
+<p>如果方向错了，再快也白搭。</p>
+</blockquote>
+<p>首先我们明确一点，目前所用的计算机都是基于许多统一规范而来的。这些规范可能不够完美，但一定是目前为止最为适用且优秀的。我很喜欢一本书中列出的<strong>硬件设计三大基本原则</strong>：</p>
+<ol type="1">
+<li>简单源于规整</li>
+<li>越小越快</li>
+<li>优秀的设计需要适宜的折中方案</li>
+</ol>
+<p>为什么要说这个？因为计算机的浮点数也是基于硬件设计的。很多时候你可能会感知不到它，只认为是普通的一个非整数而已。其实，因为硬件限制，计算机浮点数只是对于一个数的有限位近似。而如何近似？这就需要按照它所遵循的规范了。</p>
+<p>本文中，主要探讨大部分<strong>基于二进制的计算机与其 IEEE 754 标准，以及由此带来的一些容易忽视的计算问题</strong>。因为也是看完书后的一些总结，所以只是浅显地说一下，但我会尽量保证内容的正确性和可读性。如果有错误，请指出。</p>
+<h2 id="浮点数">浮点数</h2>
+<h3 id="简介">简介</h3>
+<p>先来说一下什么是浮点数，这里引用维基百科相应词条的首段进行说明。</p>
+<blockquote>
+<p>在<a href="https://zh.wikipedia.org/wiki/計算機科學" target="_blank" rel="noopener">计算机科学</a>中，<strong>浮点</strong>（英语：floating point，缩写为FP）是一种对于<a href="https://zh.wikipedia.org/wiki/實數" target="_blank" rel="noopener">实数</a>的近似值数值表现法，由一个<a href="https://zh.wikipedia.org/wiki/有效数字" target="_blank" rel="noopener">有效数字</a>（即<strong><a href="https://zh.wikipedia.org/w/index.php?title=尾数&amp;action=edit&amp;redlink=1" target="_blank" rel="noopener">尾数</a></strong>）加上<a href="https://zh.wikipedia.org/wiki/冪數" target="_blank" rel="noopener">幂数</a>来表示，通常是乘以某个<a href="https://zh.wikipedia.org/wiki/基数" target="_blank" rel="noopener">基数</a>的整数次<a href="https://zh.wikipedia.org/wiki/指数" target="_blank" rel="noopener">指数</a>得到。以这种表示法表示的数值，称为<strong>浮点数</strong>（floating-point number）。利用浮点进行运算，称为<em>浮点计算</em>，这种运算通常伴随着因为无法精确表示而进行的近似或舍入。</p>
+<p>-维基百科</p>
+</blockquote>
+<h3 id="规格化数">规格化数</h3>
+<p>大家应该都很熟悉十进制中的科学计数法，比如 <span class="math inline">\(0.0314*10^2\)</span>。那再进一步，<strong>一个采用科学计数法表示的数，如果没有前导 0，且小数点左边只有一位整数</strong>，则可称为<strong>规格化数</strong>。比如 <span class="math inline">\(1.0_{10}*10^2\)</span> 是规格化的科学计数法数，但 <span class="math inline">\(0.1_{10}*10^2\)</span>、<span class="math inline">\(10_{10}*10^2\)</span> 并不是。</p>
+<p>在二进制数中，同样如此。只不过数字并非 0-9，而是 1 或 0。比如 <span class="math inline">\(1.0101_{2}*2^2\)</span> 就是一个规格化的二进制数。</p>
+<h3 id="浮点表示ieee-754">浮点表示（IEEE 754）</h3>
+<p>以下会用十进制数 <span class="math inline">\(5.25_{10}=1.0101_{2}*2^2\)</span> 转换为标准单精度二进制浮点数作为例子。</p>
+<p>目前计算机表示二进制浮点数的规范，是国际通用的 IEEE 754 标准。为了说明方便，这里只涉及单精度和双精度浮点数。</p>
+<p>IEEE 754 标准规定，任意一个二进制浮点数可规范表示为如下格式：</p>
+<blockquote>
+<p><span class="math display">\[(-1)^S*F*2^E\]</span></p>
+<ul>
+<li>S (sign): 符号表示</li>
+<li>F (fraction): 尾数（有效数）</li>
+<li>E (exponent): 指数</li>
+</ul>
+</blockquote>
+<p>它在硬件中如下表示（存储）：</p>
+<figure>
+<img src="General_floating_point_frac.svg" alt="" /><figcaption>490px-General_floating_point_frac.svg</figcaption>
+</figure>
+<p>你们也许发现了，这格式就如上述的规格化二进制数。其实，就是如此。在 <span class="math inline">\(1.0101_{2}*2^2\)</span> 中，<span class="math inline">\(S=0_2\)</span>, <span class="math inline">\(F=1.0101_2\)</span>, <span class="math inline">\(E=2_{10}\)</span>。你们也许会好奇，为什么这里 E 用十进制标出？别急，我们一步步来。我们目前仅可确定 sign 的值。</p>
+<figure>
+<img src="IEEE_754_1.svg" alt="" /><figcaption>IEEE 754_1</figcaption>
+</figure>
+<p>可以看出，<strong>S 表示正负</strong>，<strong>F 的长短确定数的精度</strong>，<strong>E 的长短确定数的范围</strong>。</p>
+<h4 id="单精度与双精度">单精度与双精度</h4>
+<p>其主要区别在于，单精度用 32 位来表示一个二进制浮点数，而双精度为 64 位。并且，相应的尾数、指数位数会有不同。单精度中， <code>sign</code> 1 位， <code>exponent</code> 8 位， <code>fraction</code> 23 位；双精度中， <code>sign</code> 1 位， <code>exponent</code> 11 位， <code>fraction</code> 52 位。</p>
+<p>说到位数，就不得不说 IEEE 754 对指数和尾数的特殊规定了。</p>
+<h4 id="指数与偏阶">指数与偏阶</h4>
+<p>其实很多你认为理所当然的东西充满着设计者的思考。</p>
+<p>之所以将符号 <code>sign</code> 、指数 <code>exponent</code> 放最面，一个原因是，可以比较容易地处理整数比较。但 <code>exponent</code> 是一个无符号整数（unsigned int），那问题来了，负数如何表示才能让其更好地满足这一点？</p>
+<p>如果指数 <code>exponent</code> 用补码表示，那 -1 将会是 <code>11111111</code> ，而 1 只是 <code>00000001</code> 。在相同符号下，这样子并不能将一个大数和一个小数快速区分。因此希望将最小负数的指数表示为最小，最大整数的表示为最大。就这样，<strong>IEEE 754 规定其指数部分采用带偏阶的计数法</strong>，即移码。</p>
+<p>简单来说，指数 <code>exponent</code> 的值须减去一个中间数（偏阶），才可得到真实值。对于单精度（取值范围为 0-255），这个中间数为 127；对于双精度（取值范围为 0-2047）则为 1023。</p>
+<p>也就是说，如要将 <span class="math inline">\(1.0101_{2}*2^2\)</span> 中的指数 <span class="math inline">\(2_{10}\)</span> 表示为合理的二进制指数形式，应将其加上偏阶后再转换为二进制。即 <span class="math inline">\(2_{10}+127_{10}=129_{10}\)</span>，所以为 <code>10000001</code> 。</p>
+<figure>
+<img src="IEEE_754_2.svg" alt="" /><figcaption>IEEE 754_2</figcaption>
+</figure>
+<p>至此，我们可以将之前的公式再次细化为：</p>
+<p><span class="math display">\[(-1)^S*F*2^{(Exponent-Bias)}\]</span></p>
+<h4 id="尾数与有效数">尾数与有效数</h4>
+<p>IEEE 754 标准为最大化表示数，<strong>将规格化二进制数中的前导 1 隐藏了</strong>。因此，单精度下，尾数的实际范围为 24 位，双精度为 53 位。为了说明准确，将隐藏前导 1 的尾数称为有效数（但本文中依然称之为尾数）。</p>
+<p>为什么这样可行呢？因为用规格化二进制表示的 F，其只会在 1≤F&lt;2 之间。因此，必定存在前导 1，也就可以默认隐藏。</p>
+<p>比如 <span class="math inline">\(1.0101_{2}*2^{10000001}\)</span> 中的 <code>F=1.0101</code> ，在此规定下，只需将 <code>0101</code> 记录在 <code>fraction</code> 中即可。至此转换完毕，依次对应填入即可。</p>
+<figure>
+<img src="IEEE_754_3.svg" alt="" /><figcaption>IEEE 754_3</figcaption>
+</figure>
+<p>因此，最终公式可拓展成：</p>
+<p><span class="math display">\[(-1)^S*(1+F)*2^{(Exponent-Bias)}\]</span></p>
+<h4 id="特殊">特殊</h4>
+<p>那可能会有疑问了，如果是 0 的话，那岂不是也会被默认加上 1 导致无法表示？这大可不用担心，因为 IEEE 754 还有个特点，即用特殊表示特殊。简单可总结为：</p>
+<ol type="1">
+<li><p><strong>E 不全为 0 或不全为 1</strong>：这时，浮点数就遵守上述规则</p></li>
+<li><p><strong>E 全为 0（最小）</strong>：这时，若 F' 也为 0，则表示 0；若 F '不为 0，则表示非规格化数</p></li>
+<li><p><strong>E 全为 1（最大）</strong>：这时，若 F' 也为 0，则表示无穷；若 F' 不为 0，则表示 NaN（非数）</p></li>
+</ol>
+<h3 id="总结">总结</h3>
+<p>至此，IEEE 754 规范下的二进制浮点数表示的基本规则已经全部阐述了。</p>
+<p>我们来总的看一下最初的例子。</p>
+<blockquote>
+<p>首先，十进制转换成相应的规格化的二进制数。</p>
+<p><span class="math inline">\(5.25_{10}=1.0101_{2}*2^2\)</span></p>
+<p>然后，将其指数转换为相应的移码。</p>
+<p><span class="math inline">\(1.0101_{2}*2^2=1.0101_2*2^{(129-127)_{10}}=1.0101_2*2^{10000001}\)</span></p>
+<p>再者，因为 IEEE 754 默认忽略前导 1，因此可去除 1。</p>
+<p><span class="math inline">\(1.0101_2*2^{10000001}=.0101_2*2^{10000001}\)</span></p>
+<p>即 <span class="math inline">\((-1)^0*(1+0.0101_2)*2^{10000001}\)</span></p>
+<p>最后，表示为标准的二进制浮点数。</p>
+<p>即 <code>0 10000001 01010000000000000000000</code></p>
+</blockquote>
+<h2 id="易忽视的计算问题">易忽视的计算问题</h2>
+<p>接下来，我们结合上面所描述的，来说说知道这些后，除了对具体设计的理解外，对我们日常有何应用。</p>
+<p><strong>主要是由于浮点数的非精确存储，其在计算过程中可能会引起微小的容易被忽视的问题。</strong></p>
+<p>下面的几个问题都是围绕计算所展开的，所以会有些相似，但还是都大致例举一下相应场景。</p>
+<h3 id="算数精确性">算数精确性</h3>
+<p>与整数不同，大部分浮点数无法表示一个具体的数，只能无限近似。为了保证其精确性，IEEE 754 还规定了如下内容：</p>
+<ul>
+<li>保护位：在浮点数的中间计算中，在右边多保留的两位中的<strong>首位</strong>，用于提高舍入精度</li>
+<li>舍入位：在浮点数的中间计算中，在右边多保留的两位中的<strong>第二位</strong>， 使浮点中间结果满足浮点格式，得到最接近的数</li>
+<li>粘贴位：在保护位和舍入位之后，当舍入位右边的数非 0 时置 1，否则为 0</li>
+</ul>
+<p>好处应该很容易看出，在数的比较、运算中都能提升其精度。</p>
+<p>因为是近似，IEEE 754 也提供了几种舍入模式供程序员选择近似策略。</p>
+<ul>
+<li>总是向上舍入（+∞）
+<ul>
+<li><span class="math inline">\(1.50_{10}\)</span> -&gt; <span class="math inline">\(2_{10}\)</span></li>
+<li><span class="math inline">\(-1.50_{10}\)</span> -&gt; <span class="math inline">\(-1_{10}\)</span></li>
+<li><span class="math inline">\(2.50_{10}\)</span> -&gt; <span class="math inline">\(3_{10}\)</span></li>
+</ul></li>
+<li>总是向下舍入（-∞）
+<ul>
+<li><span class="math inline">\(1.50_{10}\)</span> -&gt; <span class="math inline">\(1_{10}\)</span></li>
+<li><span class="math inline">\(-1.50_{10}\)</span> -&gt; <span class="math inline">\(-2_{10}\)</span></li>
+<li><span class="math inline">\(2.50_{10}\)</span> -&gt; <span class="math inline">\(2_{10}\)</span></li>
+</ul></li>
+<li>截断舍入
+<ul>
+<li><span class="math inline">\(1.50_{10}\)</span> -&gt; <span class="math inline">\(1_{10}\)</span></li>
+<li><span class="math inline">\(-1.50_{10}\)</span> -&gt; <span class="math inline">\(-1_{10}\)</span></li>
+<li><span class="math inline">\(2.50_{10}\)</span> -&gt; <span class="math inline">\(2_{10}\)</span></li>
+</ul></li>
+<li>向最靠近的偶数舍入
+<ul>
+<li><span class="math inline">\(1.50_{10}\)</span> -&gt; <span class="math inline">\(2_{10}\)</span></li>
+<li><span class="math inline">\(-1.50_{10}\)</span> -&gt; <span class="math inline">\(-2_{10}\)</span></li>
+<li><span class="math inline">\(2.50_{10}\)</span> -&gt; <span class="math inline">\(2_{10}\)</span></li>
+</ul></li>
+</ul>
+<p>这个过程一般是编译器自动帮你选择。当然，你也可以在处理过程中自行完成。</p>
+<p>因此，<strong>在不同舍入模式下的运算结果可能有差别。不过也值得注意的是，即便是相同的舍入模式，在不同存储方式中，结果可能也可能不同</strong>。</p>
+<p>可以看一下下面这个例子。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">float</span> a = (<span class="number">0.1</span> + <span class="number">0.7</span>) * <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">double</span> b = (<span class="number">0.1</span> + <span class="number">0.7</span>) * <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%f\n"</span>, a);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%d\n"</span>, (<span class="keyword">int</span>)a);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"---\n"</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%lf\n"</span>, b);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%d\n"</span>, (<span class="keyword">int</span>)b);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">8.000000</span><br><span class="line">8</span><br><span class="line">---</span><br><span class="line">8.000000</span><br><span class="line">7</span><br></pre></td></tr></table></figure>
+<p>有时需要注意。</p>
+<h3 id="比较问题">比较问题</h3>
+<p>可以看一下这段程序：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">double</span> a = <span class="number">1.23456789</span>;</span><br><span class="line">    <span class="keyword">double</span> b = <span class="number">1.23456781</span>, c = <span class="number">1.23456782</span>;</span><br><span class="line">    <span class="keyword">double</span> b1 = <span class="number">0.00000008</span>, c1 = <span class="number">0.00000007</span>;</span><br><span class="line">    <span class="keyword">double</span> bb, cc;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (a == <span class="number">1.23456789</span>)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"true1\n"</span>);</span><br><span class="line"></span><br><span class="line">    bb = b + b1;</span><br><span class="line">    <span class="keyword">if</span> (a == bb)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"true2\n"</span>);</span><br><span class="line"></span><br><span class="line">    cc = c + c1;</span><br><span class="line">    <span class="keyword">if</span> (a == cc)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"true3"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">true1</span><br><span class="line">true2</span><br></pre></td></tr></table></figure>
+<p>由此可见，第三个 <code>if</code> 判断为假。<strong>这也是因为其存储精度，在计算上引起的问题。</strong></p>
+<figure>
+<img src="c_1.png" alt="" /><figcaption>c_1</figcaption>
+</figure>
+<p>所以在比较经计算后的浮点数时，对于精度要求不高的时候，可以进行相应转换。或不要求完全相同，检测其误差是否在一定范围之内。</p>
+<h3 id="加法结合律">加法结合律</h3>
+<p>有上面的例子后，再来看看浮点数的加法/减法。</p>
+<p>我们可以来看下面这个例子：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">float</span> a = <span class="number">3.14e7</span>, b = <span class="number">-3.14e7</span>, c = <span class="number">1.0</span>;</span><br><span class="line">    <span class="keyword">float</span> aa = <span class="number">150.5</span>, bb = <span class="number">-150.5</span>, cc = <span class="number">0.1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"(3.14e7 + -3.14e7) + 1.0 = %f\n"</span>, (a + b) + c);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"3.14e7 + (-3.14e7 + 1.0) = %f\n"</span>, a + (b + c));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"---\n"</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"(150.5 + -150.5) + 0.1 = %f\n"</span>, (aa + bb) + cc);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"150.5 + (-150.5 + 0.1) = %f"</span>, aa + (bb + cc));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>输出为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">(3.14e7 + -3.14e7) + 1.0 &#x3D; 1.000000</span><br><span class="line">3.14e7 + (-3.14e7 + 1.0) &#x3D; 0.000000</span><br><span class="line">---</span><br><span class="line">(150.5 + -150.5) + 0.1 &#x3D; 0.100000</span><br><span class="line">150.5 + (-150.5 + 0.1) &#x3D; 0.100006</span><br></pre></td></tr></table></figure>
+<p>由此可以看出，浮点数加法不同的结合方式最终会有不同的结果。根本原因也很清楚，因为大部分浮点数只是一个数的近似表示，只有有限位的它，会根据舍入模式来选择性进位或舍去一些数。</p>
+<p>但我们可以进一步抽象，问题可以归结为：<strong>浮点数计算中改变计算的顺序可能会得到不同的计算结果</strong>，即结果不可重复。</p>
+<p>下面这个 Python 的例子，很好的说明了这一点。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> random</span><br><span class="line"></span><br><span class="line">su1 = su2 = <span class="number">0</span>  <span class="comment"># 数的和</span></span><br><span class="line">ar = [random.uniform(<span class="number">1</span>, <span class="number">1e20</span>) <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10000</span>)]  <span class="comment"># 生成随机数</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 正序相加</span></span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> ar:</span><br><span class="line">    su1 += x</span><br><span class="line"><span class="comment"># 倒序相加</span></span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> ar[::<span class="number">-1</span>]:</span><br><span class="line">    su2 += x</span><br><span class="line"></span><br><span class="line">print(su1)</span><br><span class="line">print(su2)</span><br></pre></td></tr></table></figure>
+<p>输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">5.023873624910684e+23</span><br><span class="line">5.0238736249107135e+23</span><br></pre></td></tr></table></figure>
+<p>虽然在很多时候这种区别微乎其微甚至可以忽略，但在一些需要高精度或复杂计算的时候，多次运算会不断放大这种差别，最后每次都会得到不同的结果。</p>
+<p><strong>不过，乘法和除法是相对安全的。</strong></p>
+<h3 id="并行计算">并行计算</h3>
+<p>随着需求以及技术的发展，现代计算机有很多并行的场景。</p>
+<p>现代处理器为了能同时提取并处理多个数据，通常会在一个宽字内部进行的并行操作，即子字并行。例如，在 128 位内对进位链进行分割，使处理器可同时处理 16 个 8 位、8 个 16 位等运算的同时进行并行操作。还比如操作系统层对运行程序的抽象--进程，以及其线程，都是并行的一种表现。</p>
+<p>这必然后导致一个问题，也就是上述提到的问题，<strong>浮点数计算的顺序会导致结果的不可重复</strong>。</p>
+<p>可以看一下下面这个例子。Python 多线程间的执行顺序不同，结果也不同，原因还是与上述相同。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> threading</span><br><span class="line"><span class="keyword">import</span> random</span><br><span class="line"></span><br><span class="line">su1 = su2 = <span class="number">0</span>  <span class="comment"># 数的和</span></span><br><span class="line">ar = [random.uniform(<span class="number">1</span>, <span class="number">1e20</span>) <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">10000</span>)]  <span class="comment"># 生成随机数</span></span><br><span class="line">lock = threading.Lock()  <span class="comment"># 线程锁</span></span><br><span class="line">status1 = []  <span class="comment"># 线程列表</span></span><br><span class="line">status2 = []  <span class="comment"># 线程列表</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">adds</span><span class="params">(num, typ)</span>:</span></span><br><span class="line">    <span class="keyword">global</span> su1, su2</span><br><span class="line">    lock.acquire()</span><br><span class="line">    <span class="keyword">if</span> typ == <span class="number">1</span>:</span><br><span class="line">        su1 += num</span><br><span class="line">    <span class="keyword">elif</span> typ == <span class="number">2</span>:</span><br><span class="line">        su2 += num</span><br><span class="line">    lock.release()</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> ar:</span><br><span class="line">    status1.append(threading.Thread(target=adds, args=(x, <span class="number">1</span>)))</span><br><span class="line">    status2.append(threading.Thread(target=adds, args=(x, <span class="number">2</span>)))</span><br><span class="line"></span><br><span class="line"><span class="comment"># 打乱执行顺序</span></span><br><span class="line">random.shuffle(status1)</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> status1:</span><br><span class="line">    x.start()</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> status1:</span><br><span class="line">    x.join()</span><br><span class="line"></span><br><span class="line"><span class="comment"># 打乱执行顺序</span></span><br><span class="line">random.shuffle(status2)</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> status2:</span><br><span class="line">    x.start()</span><br><span class="line"><span class="keyword">for</span> x <span class="keyword">in</span> status2:</span><br><span class="line">    x.join()</span><br><span class="line"></span><br><span class="line">print(su1)</span><br><span class="line">print(su2)</span><br></pre></td></tr></table></figure>
+<p>输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">5.0523641431462865e+23</span><br><span class="line">5.052364143146297e+23</span><br></pre></td></tr></table></figure>
+<h2 id="最后">最后</h2>
+<p>其实关于易忽视的计算问题中，大部分都是因为存储精度引起的问题。如果对于精度要求不高，不负责任地说，选择忽视其实问题也不大...</p>
+<p>关于这点，还有一个专门的领域来研究算法的数值稳定性，叫数值分析。</p>
+<h3 id="参考">参考</h3>
+<ul>
+<li>《计算机组成与设计：硬件/软件接口》</li>
+<li>https://www.ruanyifeng.com/blog/2010/06/ieee_floating-point_representation.html</li>
+<li>https://inst.eecs.berkeley.edu/~cs61c/su12/disc/Discussion6.pdf</li>
+<li>https://cs.nyu.edu/courses/spring17/CSCI-UA.0201-001/resources/lecture10.pdf</li>
+</ul>
+
+        </div>
+        <footer class="article-footer">
+            
+
+
+
+    <a data-url="https://oreo.moe/blog/%E6%8A%80%E6%9C%AF/%E8%BD%AF%E4%BB%B6%E7%9B%B8%E5%85%B3/shwtlkfloat1@Chips/" data-id="ckao77i9h0000kbpi7dfs8i43" class="article-share-link"><i class="fa fa-share"></i>分享</a>
+<script>
+    (function ($) {
+        $('body').on('click', function() {
+            $('.article-share-box.on').removeClass('on');
+        }).on('click', '.article-share-link', function(e) {
+            e.stopPropagation();
+
+            var $this = $(this),
+                url = $this.attr('data-url'),
+                encodedUrl = encodeURIComponent(url),
+                id = 'article-share-box-' + $this.attr('data-id'),
+                offset = $this.offset(),
+                box;
+
+            if ($('#' + id).length) {
+                box = $('#' + id);
+
+                if (box.hasClass('on')){
+                    box.removeClass('on');
+                    return;
+                }
+            } else {
+                var html = [
+                    '<div id="' + id + '" class="article-share-box">',
+                        '<input class="article-share-input" value="' + url + '">',
+                        '<div class="article-share-links">',
+                            '<a href="https://twitter.com/intent/tweet?url=' + encodedUrl + '" class="article-share-twitter" target="_blank" title="Twitter"></a>',
+                            '<a href="https://www.facebook.com/sharer.php?u=' + encodedUrl + '" class="article-share-facebook" target="_blank" title="Facebook"></a>',
+                            '<a href="http://pinterest.com/pin/create/button/?url=' + encodedUrl + '" class="article-share-pinterest" target="_blank" title="Pinterest"></a>',
+                            '<a href="https://plus.google.com/share?url=' + encodedUrl + '" class="article-share-google" target="_blank" title="Google+"></a>',
+                        '</div>',
+                    '</div>'
+                ].join('');
+
+              box = $(html);
+
+              $('body').append(box);
+            }
+
+            $('.article-share-box.on').hide();
+
+            box.css({
+                top: offset.top + 25,
+                left: offset.left
+            }).addClass('on');
+
+        }).on('click', '.article-share-box', function (e) {
+            e.stopPropagation();
+        }).on('click', '.article-share-box-input', function () {
+            $(this).select();
+        }).on('click', '.article-share-box-link', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            window.open(this.href, 'article-share-box-window-' + Date.now(), 'width=500,height=450');
+        });
+    })(jQuery);
+</script>
+
+        </footer>
+    </div>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "author": {
+            "@type": "Person",
+            "name": "常州大学开源软件协会"
+        },
+        "headline": "浅谈计算机二进制浮点数",
+        "image": "https://oreo.moe/blogGeneral_floating_point_frac.svg",
+        "keywords": "float",
+        "genre": "技术 软件相关",
+        "datePublished": "2020-05-11",
+        "dateCreated": "2020-05-11",
+        "dateModified": "2020-05-11",
+        "url": "https://oreo.moe/blog/技术/软件相关/shwtlkfloat1@Chips/",
+        "description": "
+如果方向错了，再快也白搭。
+
+首先我们明确一点，目前所用的计算机都是基于许多统一规范而来的。这些规范可能不够完美，但一定是目前为止最为适用且优秀的。我很喜欢一本书中列出的硬件设计三大基本原则：
+
+简单源于规整
+越小越快
+优秀的设计需要适宜的折中方案
+
+为什么要说这个？因为计算机的浮点数也是基于硬件设计的。很多时候你可能会感知不到它，只认为是普通的一个非整数而已。其实，因为硬件限制，计算机浮点数只",
+        "wordCount": 1217
+    }
+</script>
+
+</article>
+
+    <section id="comments">
+    
+    </section>
+
+
+
+                        </div>
+                    </section>
+                    <aside id="sidebar">
+    <a class="sidebar-toggle" title="Expand Sidebar"><i class="toggle icon"></i></a>
+    <div class="sidebar-top">
+        <p>关注:</p>
+        <ul class="social-links">
+            
+                
+                <li>
+                    <a class="social-tooltip" title="github" href="https://github.com/cczu-osa" target="_blank" rel="noopener">
+                        <i class="icon fa fa-github"></i>
+                    </a>
+                </li>
+                
+            
+        </ul>
+    </div>
+    
+        
+<nav id="article-nav">
+    
+        <a href="/blog/%E8%BD%AF%E4%BB%B6/%E8%BF%90%E8%A1%8C%E9%94%99%E8%AF%AF/Microsoft%20Store%20%E8%AE%BF%E9%97%AE%E5%8A%A0%E9%80%9F%E6%95%99%E7%A8%8B@HoganTR/" id="article-nav-newer" class="article-nav-link-wrap">
+        <strong class="article-nav-caption">下一篇</strong>
+        <p class="article-nav-title">
+        
+            Microsoft Store 访问加速教程
+        
+        </p>
+        <i class="icon fa fa-chevron-right" id="icon-chevron-right"></i>
+    </a>
+    
+    
+        <a href="/blog/%E8%BD%AF%E4%BB%B6/%E5%88%9B%E6%84%8F%E5%88%86%E4%BA%AB/python_wjbhhsh@blackusagi/" id="article-nav-older" class="article-nav-link-wrap">
+        <strong class="article-nav-caption">上一篇</strong>
+        <p class="article-nav-title">我就不好好说话</p>
+        <i class="icon fa fa-chevron-left" id="icon-chevron-left"></i>
+        </a>
+    
+</nav>
+
+    
+    <div class="widgets-container">
+        
+            
+                
+<div class="widget-wrap widget-list">
+    <h3 class="widget-title">目录</h3>
+    <div class="widget">
+        <div id="toc" class="toc-article">
+            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#浮点数"><span class="toc-number">1.</span> <span class="toc-text">浮点数</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#简介"><span class="toc-number">1.1.</span> <span class="toc-text">简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#规格化数"><span class="toc-number">1.2.</span> <span class="toc-text">规格化数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#浮点表示ieee-754"><span class="toc-number">1.3.</span> <span class="toc-text">浮点表示（IEEE 754）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#单精度与双精度"><span class="toc-number">1.3.1.</span> <span class="toc-text">单精度与双精度</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#指数与偏阶"><span class="toc-number">1.3.2.</span> <span class="toc-text">指数与偏阶</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#尾数与有效数"><span class="toc-number">1.3.3.</span> <span class="toc-text">尾数与有效数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#特殊"><span class="toc-number">1.3.4.</span> <span class="toc-text">特殊</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#总结"><span class="toc-number">1.4.</span> <span class="toc-text">总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#易忽视的计算问题"><span class="toc-number">2.</span> <span class="toc-text">易忽视的计算问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#算数精确性"><span class="toc-number">2.1.</span> <span class="toc-text">算数精确性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#比较问题"><span class="toc-number">2.2.</span> <span class="toc-text">比较问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#加法结合律"><span class="toc-number">2.3.</span> <span class="toc-text">加法结合律</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#并行计算"><span class="toc-number">2.4.</span> <span class="toc-text">并行计算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#最后"><span class="toc-number">3.</span> <span class="toc-text">最后</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#参考"><span class="toc-number">3.1.</span> <span class="toc-text">参考</span></a></li></ol></li></ol>
+        </div>
+    </div>
+</div>
+
+
+            
+                
+    <div class="widget-wrap widget-float">
+        <h3 class="widget-title">标签</h3>
+        <div class="widget tagcloud">
+            <a href="/blog/tags/Chrome/" style="font-size: 10px;">Chrome</a> <a href="/blog/tags/Chrome%E6%8F%92%E4%BB%B6/" style="font-size: 10px;">Chrome插件</a> <a href="/blog/tags/Microsoft/" style="font-size: 10px;">Microsoft</a> <a href="/blog/tags/c/" style="font-size: 10px;">c</a> <a href="/blog/tags/c/" style="font-size: 10px;">c++</a> <a href="/blog/tags/float/" style="font-size: 10px;">float</a> <a href="/blog/tags/python/" style="font-size: 10px;">python</a> <a href="/blog/tags/vscode/" style="font-size: 10px;">vscode</a> <a href="/blog/tags/%E6%A0%A1%E5%9B%AD%E5%AE%BD%E5%B8%A6/" style="font-size: 10px;">校园宽带</a> <a href="/blog/tags/%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/" style="font-size: 10px;">环境搭建</a> <a href="/blog/tags/%E8%81%94%E7%BD%91/" style="font-size: 10px;">联网</a> <a href="/blog/tags/%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8B%A8%E5%8F%B7/" style="font-size: 10px;">路由器拨号</a> <a href="/blog/tags/%E9%97%B2/" style="font-size: 10px;">闲</a>
+        </div>
+    </div>
+
+
+            
+        
+    </div>
+</aside>
+
+                </div>
+            </div>
+        </div>
+        <footer id="footer">
+    <div class="container">
+        <div class="container-inner">
+            <a id="back-to-top" href="javascript:;"><i class="icon fa fa-angle-up"></i></a>
+            <div class="credit">
+                <h1 class="logo-wrap">
+                    <a href="/blog/" class="logo"></a>
+                </h1>
+                <p>&copy; 2020 常州大学开源软件协会</p>
+                
+                <p>Powered by <a href="https://hexo.io/" target="_blank">Hexo</a> & <a href="https://github.com/ppoffice" target="_blank">PPOffice</a>.</p>
+                
+            </div>
+            <div class="footer-plugins">
+              
+    
+
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+    </div>
+    
+
+
+    
+        
+<script src="/blog/libs/lightgallery/js/lightgallery.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-thumbnail.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-pager.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-autoplay.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-fullscreen.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-zoom.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-hash.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-share.min.js"></script>
+
+        
+<script src="/blog/libs/lightgallery/js/lg-video.min.js"></script>
+
+    
+    
+        
+<script src="/blog/libs/justified-gallery/jquery.justifiedGallery.min.js"></script>
+
+    
+    
+        <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({ tex2jax: { inlineMath: [['$','$'], ['\\(','\\)']] } });
+        </script>
+        
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML.js"></script>
+
+    
+
+    
+    
+    
+
+
+
+<!-- Custom Scripts -->
+
+<script src="/blog/js/main.js"></script>
+
+
+</body>
+</html>
